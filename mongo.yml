@@ -1,0 +1,149 @@
+services:
+  # Config Servers
+  config1:
+    image: mongo:8.0.6
+    container_name: config1
+    command: mongod --configsvr --replSet configReplSet --port 27019
+    volumes:
+      - config1:/data/db
+    networks:
+      - mongo-cluster
+    ports:
+      - 27019:27019
+
+  config2:
+    image: mongo:8.0.6
+    container_name: config2
+    command: mongod --configsvr --replSet configReplSet --port 27019
+    volumes:
+      - config2:/data/db
+    networks:
+      - mongo-cluster
+
+  config3:
+    image: mongo:8.0.6
+    container_name: config3
+    command: mongod --configsvr --replSet configReplSet --port 27019
+    volumes:
+      - config3:/data/db
+    networks:
+      - mongo-cluster
+
+  # Shard 1
+  shard1:
+    image: mongo:8.0.6
+    container_name: shard1
+    command: mongod --shardsvr --replSet shard1ReplSet --port 27018
+    volumes:
+      - shard1:/data/db
+    networks:
+      - mongo-cluster
+    ports:
+      - 27018:27018
+
+  # Shard 2
+  shard2:
+    image: mongo:8.0.6
+    container_name: shard2
+    command: mongod --shardsvr --replSet shard2ReplSet --port 27018
+    volumes:
+      - shard2:/data/db
+    networks:
+      - mongo-cluster
+
+  # Mongos Routers
+  mongos1:
+    image: mongo:8.0.6
+    container_name: mongos1
+    depends_on:
+      - config1
+      - config2
+      - config3
+    command: >
+      bash -c "
+      sleep 10 &&
+      mongos --configdb configReplSet/config1:27019,config2:27019,config3:27019 --bind_ip_all"
+    ports:
+      - 27017:27017
+    networks:
+      - mongo-cluster
+
+  mongos2:
+    image: mongo:8.0.6
+    container_name: mongos2
+    depends_on:
+      - config1
+      - config2
+      - config3
+    command: >
+      bash -c "
+      sleep 10 &&
+      mongos --configdb configReplSet/config1:27019,config2:27019,config3:27019 --bind_ip_all"
+    ports:
+      - 27020:27017
+    networks:
+      - mongo-cluster
+
+  mongos3:
+    image: mongo:8.0.6
+    container_name: mongos3
+    depends_on:
+      - config1
+      - config2
+      - config3
+    command: >
+      bash -c "
+      sleep 10 &&
+      mongos --configdb configReplSet/config1:27019,config2:27019,config3:27019 --bind_ip_all"
+    ports:
+      - 27021:27017
+    networks:
+      - mongo-cluster
+
+  # Inicialización del clúster
+  init:
+    image: mongo:8.0.6
+    container_name: init-mongo
+    depends_on:
+      - mongos1
+      - mongos2
+      - mongos3
+      - shard1
+      - shard2
+    networks:
+      - mongo-cluster
+    entrypoint: >
+      bash -c "
+      sleep 20 &&
+      echo 'Iniciando configuración del clúster...' &&
+      mongosh --host config1:27019 --eval '
+        rs.initiate({_id: \"configReplSet\", configsvr: true, members: [
+          {_id: 0, host: \"config1:27019\"},
+          {_id: 1, host: \"config2:27019\"},
+          {_id: 2, host: \"config3:27019\"}
+        ]})' &&
+      sleep 10 &&
+      mongosh --host shard1:27018 --eval '
+        rs.initiate({_id: \"shard1ReplSet\", members: [
+          {_id: 0, host: \"shard1:27018\"}
+        ]})' &&
+      mongosh --host shard2:27018 --eval '
+        rs.initiate({_id: \"shard2ReplSet\", members: [
+          {_id: 0, host: \"shard2:27018\"}
+        ]})' &&
+      sleep 10 &&
+      mongosh --host mongos1:27017 --eval '
+        sh.addShard(\"shard1ReplSet/shard1:27018\") &&
+        sh.addShard(\"shard2ReplSet/shard2:27018\")' &&
+      echo 'Clúster configurado correctamente'"
+    restart: "no"
+
+volumes:
+  config1:
+  config2:
+  config3:
+  shard1:
+  shard2:
+
+networks:
+  mongo-cluster:
