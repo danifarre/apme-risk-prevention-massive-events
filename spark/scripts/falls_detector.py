@@ -22,7 +22,7 @@ def process_batch(batch_df, batch_id):
 
 def main():
     spark = SparkSession.builder \
-        .appName("CountUsers") \
+        .appName("FallsDetection") \
         .master("spark://spark-master:7077") \
         .config("spark.cores.max", "4") \
         .config("spark.executor.cores", "2") \
