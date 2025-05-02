@@ -297,8 +297,8 @@ services:
     environment:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master:7077
-      - SPARK_WORKER_CORES=4
-      - SPARK_WORKER_MEMORY=4g
+      - SPARK_WORKER_CORES=6
+      - SPARK_WORKER_MEMORY=12g
 
   spark-worker-2:
     image: bitnami/spark:3.5.3
@@ -308,8 +308,8 @@ services:
     environment:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master:7077
-      - SPARK_WORKER_CORES=4
-      - SPARK_WORKER_MEMORY=4g
+      - SPARK_WORKER_CORES=6
+      - SPARK_WORKER_MEMORY=12g
 
   spark-worker-3:
     image: bitnami/spark:3.5.3
@@ -319,8 +319,8 @@ services:
     environment:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master:7077
-      - SPARK_WORKER_CORES=4
-      - SPARK_WORKER_MEMORY=4g
+      - SPARK_WORKER_CORES=6
+      - SPARK_WORKER_MEMORY=12g
 
   spark-client-user-count:
     image: bitnami/spark:3.5.3
@@ -350,7 +350,7 @@ services:
 
   spark-client-falls-detector:
     image: bitnami/spark:3.5.3
-    hostname: spark-client-user-count-zone
+    hostname: spark-client-falls-detector
     depends_on:
       - spark-master
     volumes:
@@ -360,3 +360,16 @@ services:
       bash -c "/wait-for-it.sh spark-master:7077 -- 
       /opt/bitnami/spark/bin/spark-submit --master spark://spark-master:7077
       --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0 /opt/spark/app/falls_detector.py"
+
+  spark-client-massive-movements:
+    image: bitnami/spark:3.5.3
+    hostname: spark-client-massive-movements
+    depends_on:
+      - spark-master
+    volumes:
+      - ./influxdb/wait-for-it.sh:/wait-for-it.sh:ro
+      - ./spark/scripts/massive_movements.py:/opt/spark/app/massive_movements.py
+    command: >
+      bash -c "/wait-for-it.sh spark-master:7077 -- 
+      /opt/bitnami/spark/bin/spark-submit --master spark://spark-master:7077
+      --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0 /opt/spark/app/massive_movements.py"
