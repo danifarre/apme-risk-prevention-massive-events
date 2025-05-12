@@ -51,7 +51,7 @@ def process_batch(batch_df, batch_id):
 
     batch_df = max_zone.join(min_zone, ["zone"]) \
         .withColumn("diff_zone", col("max_zone") - col("min_zone")) \
-        .withColumn("massive_movement", when((col("max_zone") >= 100) & ((col("diff_zone") / col("max_zone")) > 0.95), lit(1)).otherwise(lit(0)))
+        .withColumn("massive_movement", when((col("max_zone") >= 20) & ((col("diff_zone") / col("max_zone")) > 0.80), lit(1)).otherwise(lit(0)))
 
     batch_df = batch_df.withColumn("timestamp", current_timestamp())
     result_df = batch_df.select(to_json(struct("zone", "massive_movement", "timestamp")).alias("value"))
